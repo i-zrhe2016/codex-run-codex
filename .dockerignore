@@ -1,0 +1,7 @@
+.git
+.env
+.env.*
+!.env.example
+data
+secrets
+docs/diagrams/*.png

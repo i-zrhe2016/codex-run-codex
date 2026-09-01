@@ -1,0 +1,52 @@
+name: codex-run-codex
+
+services:
+  codex:
+    image: codex-run-codex:local
+    container_name: codex-run-codex
+    restart: "on-failure:5"
+    init: true
+    stdin_open: true
+    tty: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=256m,mode=1777
+    environment:
+      HOME: /home/node
+      CODEX_HOME: /home/node/.codex
+      CODEX_WORKDIR: /workspace
+      CODEX_MODE: ${CODEX_MODE:-interactive}
+      CODEX_PROMPT: ${CODEX_PROMPT:-}
+      CODEX_CONTINUE_PROMPT: ${CODEX_CONTINUE_PROMPT:-继续}
+      CODEX_MODEL_PROVIDER: ${CODEX_MODEL_PROVIDER:-custom}
+      CODEX_PROVIDER_BASE_URL: ${CODEX_PROVIDER_BASE_URL:-}
+      CODEX_PROVIDER_WIRE_API: ${CODEX_PROVIDER_WIRE_API:-responses}
+      CODEX_PROVIDER_REQUIRES_OPENAI_AUTH: ${CODEX_PROVIDER_REQUIRES_OPENAI_AUTH:-true}
+      CODEX_MODEL: ${CODEX_MODEL:-}
+      CODEX_API_KEY: ${CODEX_API_KEY:-}
+      CODEX_API_KEY_FILE: /run/secrets/codex_api_key
+      CODEX_CONFIG_MODE: ${CODEX_CONFIG_MODE:-env}
+      CODEX_SANDBOX: ${CODEX_SANDBOX:-workspace-write}
+      CODEX_APPROVAL_POLICY: ${CODEX_APPROVAL_POLICY:-on-request}
+      CODEX_MAX_RETRIES: ${CODEX_MAX_RETRIES:-0}
+      CODEX_RETRY_DELAY_SECONDS: ${CODEX_RETRY_DELAY_SECONDS:-5}
+      CODEX_MAX_RETRY_DELAY_SECONDS: ${CODEX_MAX_RETRY_DELAY_SECONDS:-60}
+      CODEX_RESET_SESSION: ${CODEX_RESET_SESSION:-0}
+    volumes:
+      - type: bind
+        source: ${CODEX_WORKSPACE:-.}
+        target: /workspace
+      - type: volume
+        source: codex_home
+        target: /home/node/.codex
+      - type: bind
+        source: ${CODEX_API_KEY_FILE:-/dev/null}
+        target: /run/secrets/codex_api_key
+        read_only: true
+
+volumes:
+  codex_home:

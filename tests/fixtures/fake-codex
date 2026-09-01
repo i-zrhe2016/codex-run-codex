@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+count_file=${FAKE_CODEX_COUNT_FILE:?FAKE_CODEX_COUNT_FILE is required}
+log_file=${FAKE_CODEX_LOG_FILE:?FAKE_CODEX_LOG_FILE is required}
+count=0
+if [ -f "$count_file" ]; then
+    count=$(sed -n '1p' "$count_file")
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$count_file"
+printf '%s\n' "$*" >> "$log_file"
+
+is_resume=0
+for arg in "$@"; do
+    if [ "$arg" = resume ]; then
+        is_resume=1
+    fi
+done
+
+if [ "$is_resume" -eq 1 ]; then
+    exit "${FAKE_CODEX_RESUME_EXIT:-0}"
+fi
+exit "${FAKE_CODEX_INITIAL_EXIT:-1}"
