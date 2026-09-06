@@ -1,0 +1,4 @@
+interface:
+  display_name: "Container Codex Supervisor"
+  short_description: "让宿主机 Codex 启动并监督容器内 Codex CLI"
+  default_prompt: "使用此 skill 运行并监督容器中的第二个 Codex CLI。"

@@ -14,9 +14,8 @@ RUN mkdir -p /home/node/.codex /workspace \
     && chown -R node:node /home/node /workspace
 
 COPY scripts/codex-entrypoint.sh /usr/local/bin/codex-entrypoint
-COPY scripts/codex-supervisor.sh /usr/local/bin/codex-supervisor
 
-RUN chmod 755 /usr/local/bin/codex-entrypoint /usr/local/bin/codex-supervisor \
+RUN chmod 755 /usr/local/bin/codex-entrypoint \
     && codex --version
 
 USER node

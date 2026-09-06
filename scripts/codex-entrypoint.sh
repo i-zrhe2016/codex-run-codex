@@ -11,16 +11,34 @@ fail() {
 }
 
 CODEX_HOME=${CODEX_HOME:-/home/node/.codex}
+CODEX_BIN=${CODEX_BIN:-codex}
 CONFIG_MODE=${CODEX_CONFIG_MODE:-env}
 PROVIDER=${CODEX_MODEL_PROVIDER:-custom}
 BASE_URL=${CODEX_PROVIDER_BASE_URL:-}
 WIRE_API=${CODEX_PROVIDER_WIRE_API:-responses}
 REQUIRES_AUTH=${CODEX_PROVIDER_REQUIRES_OPENAI_AUTH:-true}
 MODEL=${CODEX_MODEL:-}
+CODEX_ACTION=${CODEX_ACTION:-start}
+CODEX_WORKDIR=${CODEX_WORKDIR:-/workspace}
+CODEX_MODE=${CODEX_MODE:-interactive}
+CODEX_PROMPT=${CODEX_PROMPT:-}
+CODEX_CONTINUE_PROMPT=${CODEX_CONTINUE_PROMPT:-继续}
+CODEX_SANDBOX=${CODEX_SANDBOX:-workspace-write}
+CODEX_APPROVAL_POLICY=${CODEX_APPROVAL_POLICY:-on-request}
 
 case "$CONFIG_MODE" in
     env|preserve) ;;
     *) fail "CODEX_CONFIG_MODE must be env or preserve" ;;
+esac
+
+case "$CODEX_ACTION" in
+    start|resume) ;;
+    *) fail "CODEX_ACTION must be start or resume" ;;
+esac
+
+case "$CODEX_MODE" in
+    interactive|exec) ;;
+    *) fail "CODEX_MODE must be interactive or exec" ;;
 esac
 
 mkdir -p "$CODEX_HOME"
@@ -100,4 +118,65 @@ if [ ! -f "$CODEX_HOME/config.toml" ] && [ -z "$BASE_URL" ]; then
     log "no config.toml found; set CODEX_PROVIDER_BASE_URL or mount a config"
 fi
 
-exec /usr/local/bin/codex-supervisor "$@"
+command -v "$CODEX_BIN" >/dev/null 2>&1 || fail "Codex CLI not found: $CODEX_BIN"
+mkdir -p "$CODEX_WORKDIR"
+
+run_start() {
+    if [ "$CODEX_MODE" = interactive ]; then
+        if [ -n "$CODEX_PROMPT" ]; then
+            exec "$CODEX_BIN" \
+                --cd "$CODEX_WORKDIR" \
+                --skip-git-repo-check \
+                --sandbox "$CODEX_SANDBOX" \
+                --ask-for-approval "$CODEX_APPROVAL_POLICY" \
+                --no-alt-screen \
+                "$@" \
+                "$CODEX_PROMPT"
+        fi
+        exec "$CODEX_BIN" \
+            --cd "$CODEX_WORKDIR" \
+            --skip-git-repo-check \
+            --sandbox "$CODEX_SANDBOX" \
+            --ask-for-approval "$CODEX_APPROVAL_POLICY" \
+            --no-alt-screen \
+            "$@"
+    fi
+
+    if [ -n "$CODEX_PROMPT" ]; then
+        exec "$CODEX_BIN" exec \
+            --cd "$CODEX_WORKDIR" \
+            --skip-git-repo-check \
+            --sandbox "$CODEX_SANDBOX" \
+            "$@" \
+            "$CODEX_PROMPT"
+    fi
+    exec "$CODEX_BIN" exec \
+        --cd "$CODEX_WORKDIR" \
+        --skip-git-repo-check \
+        --sandbox "$CODEX_SANDBOX" \
+        "$@"
+}
+
+run_resume() {
+    if [ "$CODEX_MODE" = interactive ]; then
+        exec "$CODEX_BIN" resume \
+            --last \
+            --cd "$CODEX_WORKDIR" \
+            --no-alt-screen \
+            "$@" \
+            "$CODEX_CONTINUE_PROMPT"
+    fi
+
+    exec "$CODEX_BIN" exec resume \
+        --last \
+        --cd "$CODEX_WORKDIR" \
+        --skip-git-repo-check \
+        "$@" \
+        "$CODEX_CONTINUE_PROMPT"
+}
+
+log "running the second Codex in ${CODEX_MODE} mode (${CODEX_ACTION})"
+if [ "$CODEX_ACTION" = start ]; then
+    run_start "$@"
+fi
+run_resume "$@"

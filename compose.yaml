@@ -3,8 +3,7 @@ name: codex-run-codex
 services:
   codex:
     image: codex-run-codex:local
-    container_name: codex-run-codex
-    restart: "on-failure:5"
+    restart: "no"
     init: true
     stdin_open: true
     tty: true
@@ -19,6 +18,7 @@ services:
       HOME: /home/node
       CODEX_HOME: /home/node/.codex
       CODEX_WORKDIR: /workspace
+      CODEX_ACTION: ${CODEX_ACTION:-start}
       CODEX_MODE: ${CODEX_MODE:-interactive}
       CODEX_PROMPT: ${CODEX_PROMPT:-}
       CODEX_CONTINUE_PROMPT: ${CODEX_CONTINUE_PROMPT:-继续}
@@ -32,10 +32,6 @@ services:
       CODEX_CONFIG_MODE: ${CODEX_CONFIG_MODE:-env}
       CODEX_SANDBOX: ${CODEX_SANDBOX:-workspace-write}
       CODEX_APPROVAL_POLICY: ${CODEX_APPROVAL_POLICY:-on-request}
-      CODEX_MAX_RETRIES: ${CODEX_MAX_RETRIES:-0}
-      CODEX_RETRY_DELAY_SECONDS: ${CODEX_RETRY_DELAY_SECONDS:-5}
-      CODEX_MAX_RETRY_DELAY_SECONDS: ${CODEX_MAX_RETRY_DELAY_SECONDS:-60}
-      CODEX_RESET_SESSION: ${CODEX_RESET_SESSION:-0}
     volumes:
       - type: bind
         source: ${CODEX_WORKSPACE:-.}

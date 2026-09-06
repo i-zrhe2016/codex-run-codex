@@ -1,6 +1,8 @@
 # 运行架构
 
-本项目只有一个运行服务：Compose 中的 `codex` 容器。入口脚本负责生成第三方 provider 配置，监督器负责启动 Codex CLI，并在非正常退出后恢复最近持久化会话。
+本项目将两个 Codex 的职责分开：第一个 Codex 是运行在宿主机上的 Agent，加载 `codex-container-supervisor` skill；第二个 Codex CLI 才运行在 Compose 容器内。容器入口只负责生成第三方 provider/auth 配置并执行一次 CLI 调用，退出状态和日志交由宿主机的第一个 Codex 判断，必要时再显式启动 `resume --last`。
+
+容器内没有自动重试、会话状态文件或第二层 shell supervisor。这样重启、恢复和停止决策只有一个所有者：宿主机的第一个 Codex。
 
 ```plantuml
 @startuml
@@ -9,22 +11,35 @@ left to right direction
 skinparam componentStyle rectangle
 skinparam shadowing false
 
-actor "User" as user
-package "Docker Compose" {
-  component "entrypoint" as entry
-  component "supervisor" as supervisor
-  component "Codex CLI" as codex
-  database "CODEX_HOME volume" as home
-  folder "Workspace mount" as workspace
-}
-cloud "Third-party API" as api
+title Host Codex supervises container Codex
 
-user --> entry
-entry --> supervisor : config
-supervisor --> codex : start / resume --last
+actor "User" as user
+component "First Codex\n(host Agent)" as outer
+component "codex-container-supervisor\n(skill)" as skill
+
+package "Docker Compose\n(second Codex runtime)" {
+  component "codex-entrypoint" as entry
+  component "Second Codex CLI" as codex
+  database "Persistent CODEX_HOME\n(session history + auth)" as home
+  folder "Workspace bind mount" as workspace
+}
+
+cloud "Third-party\nOpenAI-compatible API" as api
+
+user --> outer : task
+outer --> skill : load and apply
+skill --> entry : docker compose run\nCODEX_ACTION=start/resume
+entry --> codex : configure then execute once
 codex <--> api : OpenAI-compatible API
 codex --> home : sessions
 codex <--> workspace : files
+skill --> outer : inspect exit code/logs\nand decide whether to resume
+
+note right of skill
+The host Codex owns lifecycle decisions.
+The container has no retry loop
+or internal supervisor.
+end note
 @enduml
 ```
 
